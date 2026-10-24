@@ -1,347 +1,371 @@
--- [[ HOSHIN HUB - SMART FREE PRIVATE SERVER (SERVER HOP + FAKE BOTS) ]] --
+-- =====================================================
+-- PRIME-HUB - Speed Hack + Re-Server
+-- Delta Executor
+-- by ers
+-- =====================================================
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
 local TeleportService = game:GetService("TeleportService")
-local MarketplaceService = game:GetService("MarketplaceService")
 local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
--- Бұрынғы ашық GUI-ді өшіру
-if CoreGui:FindFirstChild("FreePrivateServerHub") then
-    CoreGui.FreePrivateServerHub:Destroy()
+-- ===== АЙНЫМАЛЫ =====
+local speedEnabled = false
+local speedValue = 50
+local isMenuOpen = false
+local guiParent = nil
+
+-- ===== DELTA ҚАУІПСІЗ GUI PARENT =====
+do
+    local ok, result = pcall(function() return gethui() end)
+    if ok and result then
+        guiParent = result
+    else
+        local ok2, result2 = pcall(function()
+            return game:GetService("CoreGui")
+        end)
+        if ok2 and result2 then
+            guiParent = result2
+        else
+            guiParent = LocalPlayer:WaitForChild("PlayerGui")
+        end
+    end
 end
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FreePrivateServerHub"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- ===== GUI =====
+local sg = Instance.new("ScreenGui")
+sg.Name = "PrimeHub"
+sg.Parent = guiParent
+sg.ResetOnSpawn = false
 
-local parentGui = (gethui and gethui()) or CoreGui or LocalPlayer:WaitForChild("PlayerGui")
-ScreenGui.Parent = parentGui
+-- Түстер
+local NEON_PURPLE = Color3.fromRGB(180, 80, 255)
+local NEON_PURPLE_LIGHT = Color3.fromRGB(210, 150, 255)
+local DARK_PURPLE = Color3.fromRGB(25, 10, 45)
+local DARKER_PURPLE = Color3.fromRGB(15, 5, 30)
 
--- [[ 1. ҚАЛҚЫМАЛЫ ИКОНКА (PRIV) ]] --
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Name = "FloatingIcon"
-ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
-ToggleBtn.Position = UDim2.new(0, 30, 0, 200)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-ToggleBtn.Text = "PRIV"
-ToggleBtn.TextColor3 = Color3.fromRGB(0, 240, 255)
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.TextSize = 13
-ToggleBtn.Active = true
-ToggleBtn.Draggable = true
-ToggleBtn.Parent = ScreenGui
+-- ===== FLOATING ICON (PRIME-HUB) =====
+local icon = Instance.new("TextButton")
+icon.Size = UDim2.new(0, 130, 0, 42)
+icon.Position = UDim2.new(0.02, 0, 0.15, 0)
+icon.BackgroundColor3 = DARK_PURPLE
+icon.BackgroundTransparency = 0.1
+icon.BorderSizePixel = 0
+icon.Text = "PRIME-HUB"
+icon.TextColor3 = NEON_PURPLE
+icon.TextScaled = true
+icon.Font = Enum.Font.GothamBold
+icon.Draggable = true
+icon.Parent = sg
 
-local ToggleCorner = Instance.new("UICorner", ToggleBtn)
-ToggleCorner.CornerRadius = UDim.new(0, 10)
+local iconCorner = Instance.new("UICorner")
+iconCorner.CornerRadius = UDim.new(0, 10)
+iconCorner.Parent = icon
 
-local ToggleStroke = Instance.new("UIStroke", ToggleBtn)
-ToggleStroke.Color = Color3.fromRGB(0, 240, 255)
-ToggleStroke.Thickness = 1.5
+local iconStroke = Instance.new("UIStroke")
+iconStroke.Color = NEON_PURPLE
+iconStroke.Thickness = 2
+iconStroke.Transparency = 0.2
+iconStroke.Parent = icon
 
--- [[ 2. НЕГІЗГІ МЕНЮ ]] --
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 320, 0, 310)
-MainFrame.Position = UDim2.new(0.5, -160, 0.5, -155)
-MainFrame.BackgroundColor3 = Color3.fromRGB(11, 8, 19)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Visible = false
-MainFrame.Parent = ScreenGui
+-- Icon ішіндегі padding (мәтін жиектерге тиіп кетпеуі үшін)
+local iconPadding = Instance.new("UIPadding")
+iconPadding.PaddingLeft = UDim.new(0, 10)
+iconPadding.PaddingRight = UDim.new(0, 10)
+iconPadding.Parent = icon
 
-local MainCorner = Instance.new("UICorner", MainFrame)
-MainCorner.CornerRadius = UDim.new(0, 14)
+-- ===== MENU =====
+local menu = Instance.new("Frame")
+menu.Size = UDim2.new(0, 280, 0, 0)
+menu.Position = UDim2.new(0.02, 0, 0.15, 48)
+menu.BackgroundColor3 = DARKER_PURPLE
+menu.BackgroundTransparency = 0.05
+menu.BorderSizePixel = 0
+menu.ClipsDescendants = true
+menu.Visible = false
+menu.Parent = sg
 
-local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Thickness = 2
-MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+local menuCorner = Instance.new("UICorner")
+menuCorner.CornerRadius = UDim.new(0, 14)
+menuCorner.Parent = menu
 
--- RGB жиек (Border)
-RunService.RenderStepped:Connect(function()
-    if MainFrame.Parent then
-        local hue = (tick() % 4) / 4
-        MainStroke.Color = Color3.fromHSV(hue, 0.85, 1)
-    end
-end)
+local menuStroke = Instance.new("UIStroke")
+menuStroke.Color = NEON_PURPLE
+menuStroke.Thickness = 2
+menuStroke.Transparency = 0.1
+menuStroke.Parent = menu
 
-local Title = Instance.new("TextLabel", MainFrame)
-Title.Size = UDim2.new(1, -40, 0, 30)
-Title.Position = UDim2.new(0, 15, 0, 10)
-Title.BackgroundTransparency = 1
-Title.Text = "🛡️ FREE PRIVATE SERVER"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize, Title.TextXAlignment = 12, Enum.TextXAlignment.Left
+-- Menu Header
+local header = Instance.new("TextLabel")
+header.Size = UDim2.new(1, 0, 0, 40)
+header.BackgroundColor3 = DARK_PURPLE
+header.BackgroundTransparency = 0.3
+header.Text = "⚡ PRIME-HUB"
+header.TextColor3 = NEON_PURPLE
+header.TextScaled = true
+header.Font = Enum.Font.GothamBold
+header.Parent = menu
 
-local CloseBtn = Instance.new("TextButton", MainFrame)
-CloseBtn.Size = UDim2.new(0, 26, 0, 26)
-CloseBtn.Position = UDim2.new(1, -34, 0, 10)
-CloseBtn.BackgroundTransparency = 1
-CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Color3.fromRGB(180, 170, 200)
-CloseBtn.TextSize, CloseBtn.Font = 15, Enum.Font.GothamBold
+local headerCorner = Instance.new("UICorner")
+headerCorner.CornerRadius = UDim.new(0, 14)
+headerCorner.Parent = header
 
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
+-- ===== SPEED HACK SWITCH =====
+local speedRow = Instance.new("Frame")
+speedRow.Size = UDim2.new(1, -20, 0, 35)
+speedRow.Position = UDim2.new(0, 10, 0, 50)
+speedRow.BackgroundTransparency = 1
+speedRow.Parent = menu
 
-ToggleBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0.6, 0, 1, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "🏃 SPEED HACK"
+speedLabel.TextColor3 = Color3.fromRGB(200, 180, 255)
+speedLabel.TextSize = 14
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.Parent = speedRow
 
--- [[ 3. КОМПОНЕНТТЕР ]] --
+local speedBtn = Instance.new("TextButton")
+speedBtn.Size = UDim2.new(0, 55, 1, -6)
+speedBtn.Position = UDim2.new(0.72, 0, 0, 3)
+speedBtn.BackgroundColor3 = Color3.fromRGB(35, 20, 55)
+speedBtn.BackgroundTransparency = 0.2
+speedBtn.Text = "OFF"
+speedBtn.TextColor3 = Color3.fromRGB(255, 100, 150)
+speedBtn.TextSize = 13
+speedBtn.Font = Enum.Font.GothamBold
+speedBtn.BorderSizePixel = 0
+speedBtn.Parent = speedRow
 
--- ADD BOT SERVER [CHECK BUTTON]
-local BotServerBtn = Instance.new("TextButton", MainFrame)
-BotServerBtn.Size = UDim2.new(1, -30, 0, 36)
-BotServerBtn.Position = UDim2.new(0, 15, 0, 50)
-BotServerBtn.BackgroundColor3 = Color3.fromRGB(22, 18, 36)
-BotServerBtn.Text = "   ADD BOT SERVER [ OFF ]"
-BotServerBtn.TextColor3 = Color3.fromRGB(200, 200, 220)
-BotServerBtn.Font = Enum.Font.GothamBold
-BotServerBtn.TextSize = 11
-BotServerBtn.TextXAlignment = Enum.TextXAlignment.Left
-BotServerBtn.BorderSizePixel = 0
+local speedBtnCorner = Instance.new("UICorner")
+speedBtnCorner.CornerRadius = UDim.new(0, 8)
+speedBtnCorner.Parent = speedBtn
 
-local botCorner = Instance.new("UICorner", BotServerBtn)
-botCorner.CornerRadius = UDim.new(0, 8)
+-- ===== SPEED VALUE INPUT =====
+local speedInputRow = Instance.new("Frame")
+speedInputRow.Size = UDim2.new(1, -20, 0, 35)
+speedInputRow.Position = UDim2.new(0, 10, 0, 90)
+speedInputRow.BackgroundTransparency = 1
+speedInputRow.Parent = menu
 
-local botStroke = Instance.new("UIStroke", BotServerBtn)
-botStroke.Color = Color3.fromRGB(50, 45, 80)
-botStroke.Thickness = 1
+local speedInputLabel = Instance.new("TextLabel")
+speedInputLabel.Size = UDim2.new(0.5, 0, 1, 0)
+speedInputLabel.BackgroundTransparency = 1
+speedInputLabel.Text = "⚡ SPEED:"
+speedInputLabel.TextColor3 = Color3.fromRGB(200, 180, 255)
+speedInputLabel.TextSize = 14
+speedInputLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedInputLabel.Font = Enum.Font.Gotham
+speedInputLabel.Parent = speedInputRow
 
--- Фейк боттар панелі (Серверді толтырып көрсету үшін)
-local BotListFrame = Instance.new("ScrollingFrame", MainFrame)
-BotListFrame.Size = UDim2.new(1, -30, 0, 0)
-BotListFrame.Position = UDim2.new(0, 15, 0, 90)
-BotListFrame.BackgroundColor3 = Color3.fromRGB(15, 12, 25)
-BotListFrame.BorderSizePixel = 0
-BotListFrame.Visible = false
-BotListFrame.CanvasSize = UDim2.new(0, 0, 0, 200)
+local speedInput = Instance.new("TextBox")
+speedInput.Size = UDim2.new(0.35, 0, 0, 26)
+speedInput.Position = UDim2.new(0.5, 0, 0, 4)
+speedInput.BackgroundColor3 = Color3.fromRGB(35, 20, 55)
+speedInput.BackgroundTransparency = 0.2
+speedInput.TextColor3 = NEON_PURPLE
+speedInput.TextSize = 14
+speedInput.Font = Enum.Font.GothamBold
+speedInput.Text = "50"
+speedInput.PlaceholderText = "1-300"
+speedInput.BorderSizePixel = 0
+speedInput.Parent = speedInputRow
 
-local botListCorner = Instance.new("UICorner", BotListFrame)
-botListCorner.CornerRadius = UDim.new(0, 8)
+local speedInputCorner = Instance.new("UICorner")
+speedInputCorner.CornerRadius = UDim.new(0, 8)
+speedInputCorner.Parent = speedInput
 
-local botToggled = false
-BotServerBtn.MouseButton1Click:Connect(function()
-    botToggled = not botToggled
-    if botToggled then
-        BotServerBtn.Text = "   ADD BOT SERVER [ ON (12 Bots) ]"
-        BotServerBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
-        botStroke.Color = Color3.fromRGB(0, 255, 150)
-        BotListFrame.Visible = true
-        MainFrame.Size = UDim2.new(0, 320, 0, 420) -- Менюді үлкейту
-        
-        -- Жалған боттар тізімін жасау
-        for i = 1, 12 do
-            local botLabel = Instance.new("TextLabel", BotListFrame)
-            botLabel.Size = UDim2.new(1, -10, 0, 24)
-            botLabel.Position = UDim2.new(0, 5, 0, (i - 1) * 26)
-            botLabel.BackgroundTransparency = 1
-            botLabel.Text = " 🤖 [AFK_Bot_" .. math.random(1000, 9999) .. "] - Ping: " .. math.random(25, 60) .. "ms"
-            botLabel.TextColor3 = Color3.fromRGB(150, 160, 180)
-            botLabel.Font = Enum.Font.Code
-            botLabel.TextSize = 10
-            botLabel.TextXAlignment = Enum.TextXAlignment.Left
-        end
-    else
-        BotServerBtn.Text = "   ADD BOT SERVER [ OFF ]"
-        BotServerBtn.TextColor3 = Color3.fromRGB(200, 200, 220)
-        botStroke.Color = Color3.fromRGB(50, 45, 80)
-        BotListFrame.Visible = false
-        MainFrame.Size = UDim2.new(0, 320, 0, 310) -- Менюді қайта кішірейту
-        for _, child in pairs(BotListFrame:GetChildren()) do
-            if child:IsA("TextLabel") then child:Destroy() end
-        end
-    end
-end)
+-- ===== RE-SERVER BUTTON =====
+local reServerBtn = Instance.new("TextButton")
+reServerBtn.Size = UDim2.new(1, -20, 0, 40)
+reServerBtn.Position = UDim2.new(0, 10, 0, 135)
+reServerBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 140)
+reServerBtn.BackgroundTransparency = 0.15
+reServerBtn.Text = "🔄 RE-SERVER"
+reServerBtn.TextColor3 = Color3.fromRGB(220, 180, 255)
+reServerBtn.TextSize = 15
+reServerBtn.Font = Enum.Font.GothamBold
+reServerBtn.BorderSizePixel = 0
+reServerBtn.Parent = menu
 
-local Sep1 = Instance.new("TextLabel", MainFrame)
-Sep1.Name = "Sep1"
-Sep1.Size = UDim2.new(1, -30, 0, 20)
-Sep1.Position = UDim2.new(0, 15, 0, 92) -- Динамикалық түрде орналасады
-Sep1.BackgroundTransparency = 1
-Sep1.Text = "========================="
-Sep1.TextColor3 = Color3.fromRGB(100, 90, 130)
-Sep1.Font = Enum.Font.GothamBold
-Sep1.TextSize = 12
+local reServerCorner = Instance.new("UICorner")
+reServerCorner.CornerRadius = UDim.new(0, 10)
+reServerCorner.Parent = reServerBtn
 
--- Bot қосылғанда Sep1 орнын төмен жылжыту үшін функция
-RunService.RenderStepped:Connect(function()
-    if botToggled then
-        BotListFrame.Visible = true
-        Sep1.Position = UDim2.new(0, 15, 0, 202)
-    else
-        BotListFrame.Visible = false
-        Sep1.Position = UDim2.new(0, 15, 0, 92)
-    end
-end)
+local reServerStroke = Instance.new("UIStroke")
+reServerStroke.Color = NEON_PURPLE
+reServerStroke.Thickness = 1.5
+reServerStroke.Transparency = 0.3
+reServerStroke.Parent = reServerBtn
 
--- JOIN PRIVATE SERVER (1-2 адамдық бос серверді іздеп табу - Server Hop)
-local JoinPrivBtn = Instance.new("TextButton", MainFrame)
-JoinPrivBtn.Size = UDim2.new(1, -30, 0, 42)
-JoinPrivBtn.Position = UDim2.new(0, 15, 0, 118)
-JoinPrivBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-JoinPrivBtn.Text = "🚀 JOIN PRIVATE SERVER (Hop)"
-JoinPrivBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-JoinPrivBtn.Font = Enum.Font.GothamBold
-JoinPrivBtn.TextSize = 11
-JoinPrivBtn.BorderSizePixel = 0
+-- ===== STATUS LABEL =====
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -20, 0, 25)
+statusLabel.Position = UDim2.new(0, 10, 0, 180)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "⚡ Дайын"
+statusLabel.TextColor3 = Color3.fromRGB(150, 120, 200)
+statusLabel.TextSize = 12
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = menu
 
-local joinCorner = Instance.new("UICorner", JoinPrivBtn)
-joinCorner.CornerRadius = UDim.new(0, 8)
+-- ===== MENU ANIMATION =====
+local menuOpen = false
 
--- Батырманың орнын да динамикалық ету
-RunService.RenderStepped:Connect(function()
-    if botToggled then
-        JoinPrivBtn.Position = UDim2.new(0, 15, 0, 228)
-    else
-        JoinPrivBtn.Position = UDim2.new(0, 15, 0, 118)
-    end
-end)
-
-JoinPrivBtn.MouseButton1Click:Connect(function()
-    JoinPrivBtn.Text = "⏳ Бос сервер ізделуде (1-2 адам)..."
+local function ToggleMenu()
+    menuOpen = not menuOpen
+    menu.Visible = true
     
-    local success, err = pcall(function()
-        local servers = {}
-        local cursor = ""
-        
-        -- Серверлер тізімін алу
-        repeat
-            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
-            if cursor ~= "" then
-                url = url .. "&cursor=" + cursor
+    local targetSize = menuOpen and UDim2.new(0, 280, 0, 215) or UDim2.new(0, 280, 0, 0)
+    
+    local tween = TweenService:Create(
+        menu,
+        TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+        {Size = targetSize}
+    )
+    tween:Play()
+    
+    if not menuOpen then
+        tween.Completed:Connect(function()
+            if not menuOpen then
+                menu.Visible = false
             end
-            local successHttp, response = pcall(function()
-                return HttpService:JSONDecode(game:HttpGet(url))
-            end)
-            
-            if successHttp and response and response.data then
-                for _, server in ipairs(response.data) do
-                    -- 1 немесе 2 адам бар серверді іздейміз (және ол толы емес)
-                    if server.playing and server.playing >= 1 and server.playing <= 2 and server.id ~= game.JobId then
-                        table.insert(servers, server.id)
-                    end
-                end
-                cursor = response.nextPageCursor or ""
-            else
-                break
-            end
-        until #servers > 0 or cursor == "" or cursor == nil
-        
-        if #servers > 0 then
-            -- Табылған бос серверге қосылу
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], LocalPlayer)
-        else
-            -- Егер 1-2 адамдық сервер табылмаса, кез келген басқа серверге қосылып көреді
-            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+        end)
+    end
+end
+
+icon.MouseButton1Click:Connect(ToggleMenu)
+icon.TouchTap:Connect(ToggleMenu)
+
+-- ===== SPEED HACK ЛОГИКАСЫ =====
+local function ApplySpeed()
+    if not speedEnabled then return end
+    local char = LocalPlayer.Character
+    if char then
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = speedValue
         end
+    end
+end
+
+local function ToggleSpeed()
+    speedEnabled = not speedEnabled
+    speedBtn.Text = speedEnabled and "ON" or "OFF"
+    speedBtn.TextColor3 = speedEnabled and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 100, 150)
+    speedBtn.BackgroundColor3 = speedEnabled and Color3.fromRGB(20, 80, 50) or Color3.fromRGB(35, 20, 55)
+    
+    if speedEnabled then
+        local ok, val = pcall(function() return tonumber(speedInput.Text) end)
+        if ok and val then
+            speedValue = math.clamp(val, 1, 300)
+            speedInput.Text = tostring(speedValue)
+        end
+        ApplySpeed()
+        statusLabel.Text = "⚡ Speed: " .. speedValue
+    else
+        local char = LocalPlayer.Character
+        if char then
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = 16
+            end
+        end
+        statusLabel.Text = "⚡ Дайын"
+    end
+end
+
+speedBtn.MouseButton1Click:Connect(ToggleSpeed)
+speedBtn.TouchTap:Connect(ToggleSpeed)
+
+-- Speed value өзгергенде
+speedInput.FocusLost:Connect(function()
+    local ok, val = pcall(function() return tonumber(speedInput.Text) end)
+    if ok and val then
+        speedValue = math.clamp(val, 1, 300)
+        speedInput.Text = tostring(speedValue)
+        if speedEnabled then
+            ApplySpeed()
+        end
+    else
+        speedInput.Text = tostring(speedValue)
+    end
+end)
+
+-- Character respawn
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    if speedEnabled then
+        ApplySpeed()
+    end
+end)
+
+-- ===== RE-SERVER ЛОГИКАСЫ =====
+local function HopToLowestServer()
+    statusLabel.Text = "🔄 Сервер іздестірілуде..."
+    
+    local placeId = game.PlaceId
+    local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
+    
+    local ok, response = pcall(function()
+        return game:HttpGet(url)
     end)
     
-    if not success then
-        warn("Server Hop Error: " .. tostring(err))
-        JoinPrivBtn.Text = "❌ Қате орын алды!"
-        task.wait(2)
-        JoinPrivBtn.Text = "🚀 JOIN PRIVATE SERVER (Hop)"
+    if not ok or not response then
+        statusLabel.Text = "❌ Сервер тізімі алынбады"
+        reServerBtn.Text = "🔄 RE-SERVER"
+        return
     end
-end)
-
-local Sep2 = Instance.new("TextLabel", MainFrame)
-Sep2.Name = "Sep2"
-Sep2.Size = UDim2.new(1, -30, 0, 20)
-Sep2.BackgroundTransparency = 1
-Sep2.Text = "========================="
-Sep2.TextColor3 = Color3.fromRGB(100, 90, 130)
-Sep2.Font = Enum.Font.GothamBold
-Sep2.TextSize = 12
-
-RunService.RenderStepped:Connect(function()
-    if botToggled then
-        Sep2.Position = UDim2.new(0, 15, 0, 276)
-    else
-        Sep2.Position = UDim2.new(0, 15, 0, 166)
-    end
-end)
-
--- [[ 4. INFO БӨЛІМІ ]] --
-local InfoContainer = Instance.new("Frame", MainFrame)
-InfoContainer.Size = UDim2.new(1, -30, 0, 95)
-InfoContainer.BackgroundColor3 = Color3.fromRGB(16, 13, 26)
-InfoContainer.BorderSizePixel = 0
-
-RunService.RenderStepped:Connect(function()
-    if botToggled then
-        InfoContainer.Position = UDim2.new(0, 15, 0, 302)
-    else
-        InfoContainer.Position = UDim2.new(0, 15, 0, 192)
-    end
-end)
-
-local infoCorner = Instance.new("UICorner", InfoContainer)
-infoCorner.CornerRadius = UDim.new(0, 8)
-
-local InfoTitle = Instance.new("TextLabel", InfoContainer)
-InfoTitle.Size = UDim2.new(1, -15, 0, 20)
-InfoTitle.Position = UDim2.new(0, 10, 0, 5)
-InfoTitle.BackgroundTransparency = 1
-InfoTitle.Text = "INFO:"
-InfoTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
-InfoTitle.Font = Enum.Font.GothamBold
-InfoTitle.TextSize, InfoTitle.TextXAlignment = 11, Enum.TextXAlignment.Left
-
-local GameLabel = Instance.new("TextLabel", InfoContainer)
-GameLabel.Size = UDim2.new(1, -15, 0, 20)
-GameLabel.Position = UDim2.new(0, 10, 0, 25)
-GameLabel.BackgroundTransparency = 1
-GameLabel.Text = "GAME: Жүктелуде..."
-GameLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
-GameLabel.Font = Enum.Font.Gotham
-GameLabel.TextSize, GameLabel.TextXAlignment = 10, Enum.TextXAlignment.Left
-
-local PlayerLabel = Instance.new("TextLabel", InfoContainer)
-PlayerLabel.Size = UDim2.new(1, -15, 0, 20)
-PlayerLabel.Position = UDim2.new(0, 10, 0, 45)
-PlayerLabel.BackgroundTransparency = 1
-PlayerLabel.Text = "PLAYER: " .. LocalPlayer.Name
-PlayerLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
-PlayerLabel.Font = Enum.Font.Gotham
-PlayerLabel.TextSize, PlayerLabel.TextXAlignment = 10, Enum.TextXAlignment.Left
-
-local FpsLabel = Instance.new("TextLabel", InfoContainer)
-FpsLabel.Size = UDim2.new(1, -15, 0, 20)
-FpsLabel.Position = UDim2.new(0, 10, 0, 65)
-FpsLabel.BackgroundTransparency = 1
-FpsLabel.Text = "FPS: 000"
-FpsLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
-FpsLabel.Font = Enum.Font.Gotham
-FpsLabel.TextSize, FpsLabel.TextXAlignment = 10, Enum.TextXAlignment.Left
-
-task.spawn(function()
-    pcall(function()
-        local info = MarketplaceService:GetProductInfo(game.PlaceId)
-        if info and info.Name then
-            GameLabel.Text = "GAME: " .. info.Name
-        else
-            GameLabel.Text = "GAME: Universal"
-        end
+    
+    local decodeOk, decoded = pcall(function()
+        return HttpService:JSONDecode(response)
     end)
-end)
-
-local lastTick = tick()
-local frameCount = 0
-RunService.RenderStepped:Connect(function()
-    frameCount = frameCount + 1
-    local currentTick = tick()
-    if currentTick - lastTick >= 1 then
-        local fps = math.floor(frameCount / (currentTick - lastTick))
-        FpsLabel.Text = "FPS: " .. tostring(fps)
-        frameCount = 0
-        lastTick = currentTick
+    
+    if not decodeOk or not decoded or not decoded.data then
+        statusLabel.Text = "❌ JSON қате"
+        reServerBtn.Text = "🔄 RE-SERVER"
+        return
     end
-end)
+    
+    -- Ең аз ойыншысы бар серверді табу
+    local bestServer = nil
+    local lowestCount = math.huge
+    
+    for _, server in ipairs(decoded.data) do
+        if server.id and server.id ~= game.JobId and server.playing and server.playing < server.maxPlayers then
+            if server.playing < lowestCount then
+                lowestCount = server.playing
+                bestServer = server
+            end
+        end
+    end
+    
+    if bestServer then
+        statusLabel.Text = "🔄 Телепорт: " .. bestServer.playing .. " ойыншы"
+        task.wait(0.5)
+        TeleportService:TeleportToPlaceInstance(placeId, bestServer.id, LocalPlayer)
+    else
+        statusLabel.Text = "❌ Бос сервер табылмады"
+        reServerBtn.Text = "🔄 RE-SERVER"
+    end
+end
+
+local function OnReServer()
+    if reServerBtn.Text == "🔄 RE-SERVER" then
+        reServerBtn.Text = "⏳ ІЗДЕУДЕ..."
+        HopToLowestServer()
+    end
+end
+
+reServerBtn.MouseButton1Click:Connect(OnReServer)
+reServerBtn.TouchTap:Connect(OnReServer)
+
+-- ===== ІСКЕ ҚОСУ =====
+print("⚡ PRIME-HUB by ers - Жүктелді!")
+print("💜 Күлгін неон дизайн")
+print("🏃 Speed Hack + 🔄 Re-Server")
