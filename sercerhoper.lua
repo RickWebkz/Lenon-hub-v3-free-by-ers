@@ -1,5 +1,5 @@
 -- =====================================================
--- PRIME-HUB - Full Edition (FIXED v2)
+-- PRIME-HUB - FULL EDITION (v4 FINAL)
 -- Delta Executor
 -- by ers
 -- =====================================================
@@ -10,8 +10,10 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local LocalPlayer = Players.LocalPlayer
 
+-- ===== АЙНЫМАЛЫ =====
 local speedEnabled = false
 local speedValue = 50
 local menuOpen = false
@@ -24,7 +26,9 @@ local antiTpEnabled = false
 local antiTpConnection = nil
 local antiTpAttempts = 0
 local antiTpMaxAttempts = 3
+local antiTpCooldown = false
 local lastPosition = nil
+local ragdollConstraints = {}
 
 -- ===== GUI PARENT =====
 do
@@ -264,7 +268,9 @@ end
 
 icon.MouseButton1Click:Connect(ToggleMenu)
 
--- ===== SPEED HACK =====
+-- =====================================================
+-- SPEED HACK
+-- =====================================================
 function ApplySpeed()
     if speedConnection then speedConnection:Disconnect() speedConnection = nil end
     if not speedEnabled then
@@ -296,35 +302,48 @@ speedInput.FocusLost:Connect(function()
     end
 end)
 
--- ===== ANTI RAGDOLL (ТҮЗЕТІЛГЕН) =====
+-- =====================================================
+-- ANTI RAGDOLL (НАҚТЫ ӘДІС)
+-- =====================================================
 function EnableAntiRagdoll()
     if antiRagdollConnection then antiRagdollConnection:Disconnect() end
     
-    antiRagdollConnection = RunService.Heartbeat:Connect(function()
-        if not antiRagdollEnabled then return end
-        local char = LocalPlayer.Character
-        if not char then return end
-        
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            -- PlatformStand өшіру
-            if humanoid.PlatformStand then
-                humanoid.PlatformStand = false
-            end
-            
-            -- Ragdoll күйін GettingUp-қа ауыстыру
-            local state = humanoid:GetState()
-            if state == Enum.HumanoidStateType.Ragdoll or state == Enum.HumanoidStateType.FallingDown then
-                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-            end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    
+    -- 1. Ragdoll/FallingDown күйлерін ӨШІРУ (ең сенімді әдіс)
+    pcall(function()
+        hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+    end)
+    
+    -- 2. Барлық Ragdoll constraint-терін ЖОЮ
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BallSocketConstraint") or v:IsA("HingeConstraint") then
+            pcall(function() v:Destroy() end)
         end
-        
-        -- Ragdoll constraint-терін өшіру
-        for _, obj in ipairs(char:GetDescendants()) do
-            if obj:IsA("BallSocketConstraint") or obj:IsA("HingeConstraint") or obj:IsA("WeldConstraint") then
-                local name = obj.Name:lower()
-                if name:find("ragdoll") or name:find("joint") or name:find("socket") then
-                    obj.Enabled = false
+        if v:IsA("Motor6D") and not v.Enabled then
+            v.Enabled = true
+        end
+    end
+    
+    -- 3. Қайта тексеру (әр 0.5 секунд)
+    antiRagdollConnection = task.spawn(function()
+        while antiRagdollEnabled do
+            task.wait(0.5)
+            local c = LocalPlayer.Character
+            if not c then continue end
+            local h = c:FindFirstChildOfClass("Humanoid")
+            if h then
+                if h.PlatformStand then h.PlatformStand = false end
+                if h.Sit then h.Sit = false end
+            end
+            for _, v in ipairs(c:GetDescendants()) do
+                if v:IsA("BallSocketConstraint") or v:IsA("HingeConstraint") then
+                    pcall(function() v:Destroy() end)
                 end
             end
         end
@@ -332,14 +351,30 @@ function EnableAntiRagdoll()
 end
 
 function DisableAntiRagdoll()
-    if antiRagdollConnection then antiRagdollConnection:Disconnect() antiRagdollConnection = nil end
+    if antiRagdollConnection then
+        task.cancel(antiRagdollConnection)
+        antiRagdollConnection = nil
+    end
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            pcall(function()
+                hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+                hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+            end)
+        end
+    end
 end
 
--- ===== ANTI TP (ТҮЗЕТІЛГЕН - BodyPosition арқылы) =====
+-- =====================================================
+-- ANTI TP (ALIGNPOSITION АРҚЫЛЫ)
+-- =====================================================
 function EnableAntiTp()
     if antiTpConnection then antiTpConnection:Disconnect() end
     
     antiTpAttempts = 0
+    antiTpCooldown = false
     local char = LocalPlayer.Character
     if char then
         local root = char:FindFirstChild("HumanoidRootPart")
@@ -348,6 +383,7 @@ function EnableAntiTp()
     
     antiTpConnection = RunService.Heartbeat:Connect(function()
         if not antiTpEnabled then return end
+        if antiTpCooldown then return end
         if antiTpAttempts >= antiTpMaxAttempts then
             if antiTpConnection then antiTpConnection:Disconnect() antiTpConnection = nil end
             statusLabel.Text = "🛡️ ANTI TP: тоқтатылды"
@@ -362,13 +398,25 @@ function EnableAntiTp()
         if lastPosition then
             local distance = (root.Position - lastPosition.Position).Magnitude
             if distance > 5 then
-                -- BodyPosition арқылы қайтару (CFrame емес)
-                local bp = Instance.new("BodyPosition")
-                bp.Position = lastPosition.Position
-                bp.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                bp.Parent = root
-                task.wait(0.1)
-                bp:Destroy()
+                antiTpCooldown = true
+                
+                -- AlignPosition (BodyPosition емес - заманауи әдіс)
+                local ap = Instance.new("AlignPosition")
+                ap.Mode = Enum.PositionAlignmentMode.OneAttachment
+                local att = root:FindFirstChild("RootAttachment")
+                if not att then
+                    att = Instance.new("Attachment")
+                    att.Parent = root
+                end
+                ap.Attachment0 = att
+                ap.Position = lastPosition.Position
+                ap.MaxForce = math.huge
+                ap.Responsiveness = 200
+                ap.Parent = root
+                
+                task.wait(0.2)
+                pcall(function() ap:Destroy() end)
+                antiTpCooldown = false
                 
                 antiTpAttempts = antiTpAttempts + 1
                 statusLabel.Text = "🛡️ ANTI TP: " .. antiTpAttempts .. "/3"
@@ -388,9 +436,12 @@ function DisableAntiTp()
     if antiTpConnection then antiTpConnection:Disconnect() antiTpConnection = nil end
     lastPosition = nil
     antiTpAttempts = 0
+    antiTpCooldown = false
 end
 
--- ===== INSTANT GRAB (ТҮЗЕТІЛГЕН - fireproximityprompt) =====
+-- =====================================================
+-- INSTANT GRAB (FIREPROXIMITYPROMPT)
+-- =====================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if not instantGrabEnabled then return end
@@ -401,18 +452,18 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         local root = char:FindFirstChild("HumanoidRootPart")
         if not root then return end
         
-        -- ProximityPrompt (Delta-ның fireproximityprompt арқылы)
         for _, obj in ipairs(workspace:GetDescendants()) do
             if obj:IsA("ProximityPrompt") then
                 local parent = obj.Parent
                 if parent and parent:IsA("BasePart") then
                     if (parent.Position - root.Position).Magnitude <= 50 then
+                        -- fireproximityprompt (Delta-ның ішкі функциясы)
                         pcall(function()
                             if fireproximityprompt then
                                 fireproximityprompt(obj)
                             else
                                 obj:InputHoldBegin()
-                                task.wait(0.05)
+                                task.wait(obj.HoldDuration or 0.1)
                                 obj:InputHoldEnd()
                             end
                         end)
@@ -432,22 +483,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 end
             end
         end
-        
-        -- Tool
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("Tool") then
-                local handle = obj:FindFirstChild("Handle")
-                if handle and handle:IsA("BasePart") then
-                    if (handle.Position - root.Position).Magnitude <= 50 then
-                        pcall(function() obj.Parent = char end)
-                    end
-                end
-            end
-        end
     end
 end)
 
--- Respawn
+-- =====================================================
+-- RESPAWN
+-- =====================================================
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(1)
     if speedEnabled then ApplySpeed() end
@@ -455,7 +496,9 @@ LocalPlayer.CharacterAdded:Connect(function()
     if antiTpEnabled then EnableAntiTp() end
 end)
 
--- ===== RE-SERVER =====
+-- =====================================================
+-- RE-SERVER
+-- =====================================================
 local function HopToLowestServer()
     statusLabel.Text = "🔄 Сервер іздестірілуде..."
     local placeId = game.PlaceId
@@ -513,4 +556,8 @@ reServerBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- =====================================================
+-- ІСКЕ ҚОСУ
+-- =====================================================
 print("⚡ PRIME-HUB by ers - Жүктелді!")
+print("🏃 Speed Hack | 🧍 Anti-Ragdoll | 🎯 Instant Grab | 🛡️ Anti-TP | 🔄 Re-Server")
