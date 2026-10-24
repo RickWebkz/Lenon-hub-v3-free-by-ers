@@ -1,5 +1,5 @@
 -- =====================================================
--- PRIME-HUB - Full Edition (ANTI TP қосылды)
+-- PRIME-HUB - Full Edition (FIXED v2)
 -- Delta Executor
 -- by ers
 -- =====================================================
@@ -12,7 +12,6 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
--- ===== АЙНЫМАЛЫ =====
 local speedEnabled = false
 local speedValue = 50
 local menuOpen = false
@@ -25,23 +24,19 @@ local antiTpEnabled = false
 local antiTpConnection = nil
 local antiTpAttempts = 0
 local antiTpMaxAttempts = 3
+local lastPosition = nil
 
--- ===== DELTA ҚАУІПСІЗ GUI PARENT =====
+-- ===== GUI PARENT =====
 do
     local ok, result = pcall(function() return gethui() end)
-    if ok and result then
-        guiParent = result
+    if ok and result then guiParent = result
     else
         local ok2, result2 = pcall(function() return game:GetService("CoreGui") end)
-        if ok2 and result2 then
-            guiParent = result2
-        else
-            guiParent = LocalPlayer:WaitForChild("PlayerGui")
-        end
+        if ok2 and result2 then guiParent = result2
+        else guiParent = LocalPlayer:WaitForChild("PlayerGui") end
     end
 end
 
--- ===== ТҮСТЕР =====
 local NEON_PURPLE = Color3.fromRGB(180, 80, 255)
 local DARK_PURPLE = Color3.fromRGB(25, 10, 45)
 local DARKER_PURPLE = Color3.fromRGB(15, 5, 30)
@@ -53,7 +48,6 @@ sg.Parent = guiParent
 sg.ResetOnSpawn = false
 sg.IgnoreGuiInset = true
 
--- ===== БАСТЫ FRAME =====
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 280, 0, 42)
 mainFrame.Position = UDim2.new(0.02, 0, 0.15, 0)
@@ -62,10 +56,8 @@ mainFrame.Active = true
 mainFrame.Draggable = true
 mainFrame.Parent = sg
 
--- ===== FLOATING ICON =====
 local icon = Instance.new("TextButton")
 icon.Size = UDim2.new(0, 130, 0, 42)
-icon.Position = UDim2.new(0, 0, 0, 0)
 icon.BackgroundColor3 = DARK_PURPLE
 icon.BackgroundTransparency = 0.1
 icon.BorderSizePixel = 0
@@ -86,12 +78,6 @@ iconStroke.Thickness = 2
 iconStroke.Transparency = 0.2
 iconStroke.Parent = icon
 
-local iconPadding = Instance.new("UIPadding")
-iconPadding.PaddingLeft = UDim.new(0, 10)
-iconPadding.PaddingRight = UDim.new(0, 10)
-iconPadding.Parent = icon
-
--- ===== MENU =====
 local menu = Instance.new("Frame")
 menu.Size = UDim2.new(0, 280, 0, 0)
 menu.Position = UDim2.new(0, 0, 0, 48)
@@ -112,7 +98,6 @@ menuStroke.Thickness = 2
 menuStroke.Transparency = 0.1
 menuStroke.Parent = menu
 
--- Menu Header
 local header = Instance.new("TextLabel")
 header.Size = UDim2.new(1, 0, 0, 40)
 header.BackgroundColor3 = DARK_PURPLE
@@ -127,7 +112,6 @@ local headerCorner = Instance.new("UICorner")
 headerCorner.CornerRadius = UDim.new(0, 14)
 headerCorner.Parent = header
 
--- ===== SWITCH BUTTON ЖАСАУ =====
 local function CreateSwitch(text, yPos, callback)
     local row = Instance.new("Frame")
     row.Size = UDim2.new(1, -20, 0, 35)
@@ -170,19 +154,12 @@ local function CreateSwitch(text, yPos, callback)
         btn.BackgroundColor3 = state and Color3.fromRGB(20, 80, 50) or Color3.fromRGB(35, 20, 55)
         callback(state)
     end)
-    
     return btn
 end
 
--- ===== SWITCH BUTTONS =====
 local speedBtn = CreateSwitch("🏃 SPEED HACK", 50, function(state)
     speedEnabled = state
     ApplySpeed()
-    if state then
-        statusLabel.Text = "⚡ Speed: " .. speedValue
-    else
-        statusLabel.Text = "⚡ Дайын"
-    end
 end)
 
 local antiRagdollBtn = CreateSwitch("🧍 ANTI RAGDOLL", 85, function(state)
@@ -197,16 +174,10 @@ end)
 local antiTpBtn = CreateSwitch("🛡️ ANTI TP", 155, function(state)
     antiTpEnabled = state
     antiTpAttempts = 0
-    if state then
-        EnableAntiTp()
-        statusLabel.Text = "🛡️ ANTI TP: ON (3 әрекет)"
-    else
-        DisableAntiTp()
-        statusLabel.Text = "⚡ Дайын"
-    end
+    if state then EnableAntiTp() else DisableAntiTp() end
 end)
 
--- ===== SPEED VALUE INPUT =====
+-- SPEED INPUT
 local speedInputRow = Instance.new("Frame")
 speedInputRow.Size = UDim2.new(1, -20, 0, 35)
 speedInputRow.Position = UDim2.new(0, 10, 0, 190)
@@ -241,7 +212,7 @@ local speedInputCorner = Instance.new("UICorner")
 speedInputCorner.CornerRadius = UDim.new(0, 8)
 speedInputCorner.Parent = speedInput
 
--- ===== RE-SERVER BUTTON =====
+-- RE-SERVER
 local reServerBtn = Instance.new("TextButton")
 reServerBtn.Size = UDim2.new(1, -20, 0, 40)
 reServerBtn.Position = UDim2.new(0, 10, 0, 235)
@@ -265,7 +236,7 @@ reServerStroke.Thickness = 1.5
 reServerStroke.Transparency = 0.3
 reServerStroke.Parent = reServerBtn
 
--- ===== STATUS LABEL =====
+-- STATUS
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, -20, 0, 25)
 statusLabel.Position = UDim2.new(0, 10, 0, 280)
@@ -277,25 +248,16 @@ statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 statusLabel.Parent = menu
 
--- ===== MENU ANIMATION =====
+-- MENU ANIMATION
 local function ToggleMenu()
     menuOpen = not menuOpen
     menu.Visible = true
-    
     local targetSize = menuOpen and UDim2.new(0, 280, 0, 315) or UDim2.new(0, 280, 0, 0)
-    
-    local tween = TweenService:Create(
-        menu,
-        TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        {Size = targetSize}
-    )
+    local tween = TweenService:Create(menu, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Size = targetSize})
     tween:Play()
-    
     if not menuOpen then
         tween.Completed:Connect(function()
-            if not menuOpen then
-                menu.Visible = false
-            end
+            if not menuOpen then menu.Visible = false end
         end)
     end
 end
@@ -304,28 +266,21 @@ icon.MouseButton1Click:Connect(ToggleMenu)
 
 -- ===== SPEED HACK =====
 function ApplySpeed()
-    if speedConnection then
-        speedConnection:Disconnect()
-        speedConnection = nil
-    end
-    
+    if speedConnection then speedConnection:Disconnect() speedConnection = nil end
     if not speedEnabled then
         local char = LocalPlayer.Character
         if char then
-            local humanoid = char:FindFirstChild("Humanoid")
-            if humanoid then humanoid.WalkSpeed = 16 end
+            local h = char:FindFirstChild("Humanoid")
+            if h then h.WalkSpeed = 16 end
         end
         return
     end
-    
     speedConnection = RunService.Heartbeat:Connect(function()
         if not speedEnabled then return end
         local char = LocalPlayer.Character
         if char then
-            local humanoid = char:FindFirstChild("Humanoid")
-            if humanoid and humanoid.WalkSpeed ~= speedValue then
-                humanoid.WalkSpeed = speedValue
-            end
+            local h = char:FindFirstChild("Humanoid")
+            if h and h.WalkSpeed ~= speedValue then h.WalkSpeed = speedValue end
         end
     end)
 end
@@ -335,20 +290,15 @@ speedInput.FocusLost:Connect(function()
     if ok and val then
         speedValue = math.clamp(val, 1, 1500)
         speedInput.Text = tostring(speedValue)
-        if speedEnabled then
-            ApplySpeed()
-            statusLabel.Text = "⚡ Speed: " .. speedValue
-        end
+        if speedEnabled then ApplySpeed() end
     else
         speedInput.Text = tostring(speedValue)
     end
 end)
 
--- ===== ANTI RAGDOLL =====
+-- ===== ANTI RAGDOLL (ТҮЗЕТІЛГЕН) =====
 function EnableAntiRagdoll()
-    if antiRagdollConnection then
-        antiRagdollConnection:Disconnect()
-    end
+    if antiRagdollConnection then antiRagdollConnection:Disconnect() end
     
     antiRagdollConnection = RunService.Heartbeat:Connect(function()
         if not antiRagdollEnabled then return end
@@ -357,22 +307,23 @@ function EnableAntiRagdoll()
         
         local humanoid = char:FindFirstChildOfClass("Humanoid")
         if humanoid then
+            -- PlatformStand өшіру
             if humanoid.PlatformStand then
                 humanoid.PlatformStand = false
             end
             
+            -- Ragdoll күйін GettingUp-қа ауыстыру
             local state = humanoid:GetState()
-            if state == Enum.HumanoidStateType.Ragdoll then
-                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-            end
-            if state == Enum.HumanoidStateType.FallingDown then
+            if state == Enum.HumanoidStateType.Ragdoll or state == Enum.HumanoidStateType.FallingDown then
                 humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
             end
         end
         
+        -- Ragdoll constraint-терін өшіру
         for _, obj in ipairs(char:GetDescendants()) do
-            if obj:IsA("BallSocketConstraint") or obj:IsA("HingeConstraint") then
-                if obj.Name:lower():find("ragdoll") or obj.Name:lower():find("joint") then
+            if obj:IsA("BallSocketConstraint") or obj:IsA("HingeConstraint") or obj:IsA("WeldConstraint") then
+                local name = obj.Name:lower()
+                if name:find("ragdoll") or name:find("joint") or name:find("socket") then
                     obj.Enabled = false
                 end
             end
@@ -381,38 +332,25 @@ function EnableAntiRagdoll()
 end
 
 function DisableAntiRagdoll()
-    if antiRagdollConnection then
-        antiRagdollConnection:Disconnect()
-        antiRagdollConnection = nil
-    end
+    if antiRagdollConnection then antiRagdollConnection:Disconnect() antiRagdollConnection = nil end
 end
 
--- ===== ANTI TP (2-3 РЕТ ӘРЕКЕТ ЕТЕДІ) =====
-local lastPosition = nil
-
+-- ===== ANTI TP (ТҮЗЕТІЛГЕН - BodyPosition арқылы) =====
 function EnableAntiTp()
-    if antiTpConnection then
-        antiTpConnection:Disconnect()
-    end
+    if antiTpConnection then antiTpConnection:Disconnect() end
     
     antiTpAttempts = 0
     local char = LocalPlayer.Character
     if char then
         local root = char:FindFirstChild("HumanoidRootPart")
-        if root then
-            lastPosition = root.CFrame
-        end
+        if root then lastPosition = root.CFrame end
     end
     
     antiTpConnection = RunService.Heartbeat:Connect(function()
         if not antiTpEnabled then return end
-        -- 3 әрекеттен кейін тоқтату
         if antiTpAttempts >= antiTpMaxAttempts then
-            if antiTpConnection then
-                antiTpConnection:Disconnect()
-                antiTpConnection = nil
-            end
-            statusLabel.Text = "🛡️ ANTI TP: тоқтатылды (3 әрекет)"
+            if antiTpConnection then antiTpConnection:Disconnect() antiTpConnection = nil end
+            statusLabel.Text = "🛡️ ANTI TP: тоқтатылды"
             return
         end
         
@@ -422,41 +360,37 @@ function EnableAntiTp()
         if not root then return end
         
         if lastPosition then
-            -- Егер ойыншы кенеттен артқа телепортталса (3+ studs)
             local distance = (root.Position - lastPosition.Position).Magnitude
-            if distance > 3 then
-                -- Артқа қайтару
-                root.CFrame = lastPosition
+            if distance > 5 then
+                -- BodyPosition арқылы қайтару (CFrame емес)
+                local bp = Instance.new("BodyPosition")
+                bp.Position = lastPosition.Position
+                bp.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                bp.Parent = root
+                task.wait(0.1)
+                bp:Destroy()
+                
                 antiTpAttempts = antiTpAttempts + 1
                 statusLabel.Text = "🛡️ ANTI TP: " .. antiTpAttempts .. "/3"
                 
                 if antiTpAttempts >= antiTpMaxAttempts then
-                    if antiTpConnection then
-                        antiTpConnection:Disconnect()
-                        antiTpConnection = nil
-                    end
-                    statusLabel.Text = "🛡️ ANTI TP: тоқтатылды (3 әрекет)"
+                    if antiTpConnection then antiTpConnection:Disconnect() antiTpConnection = nil end
+                    statusLabel.Text = "🛡️ ANTI TP: тоқтатылды"
                 end
             else
-                -- Қалыпты қозғалыс
                 lastPosition = root.CFrame
             end
-        else
-            lastPosition = root.CFrame
         end
     end)
 end
 
 function DisableAntiTp()
-    if antiTpConnection then
-        antiTpConnection:Disconnect()
-        antiTpConnection = nil
-    end
+    if antiTpConnection then antiTpConnection:Disconnect() antiTpConnection = nil end
     lastPosition = nil
     antiTpAttempts = 0
 end
 
--- ===== INSTANT GRAB =====
+-- ===== INSTANT GRAB (ТҮЗЕТІЛГЕН - fireproximityprompt) =====
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if not instantGrabEnabled then return end
@@ -467,21 +401,27 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         local root = char:FindFirstChild("HumanoidRootPart")
         if not root then return end
         
+        -- ProximityPrompt (Delta-ның fireproximityprompt арқылы)
         for _, obj in ipairs(workspace:GetDescendants()) do
             if obj:IsA("ProximityPrompt") then
                 local parent = obj.Parent
                 if parent and parent:IsA("BasePart") then
                     if (parent.Position - root.Position).Magnitude <= 50 then
                         pcall(function()
-                            obj:InputHoldBegin()
-                            task.wait(0.05)
-                            obj:InputHoldEnd()
+                            if fireproximityprompt then
+                                fireproximityprompt(obj)
+                            else
+                                obj:InputHoldBegin()
+                                task.wait(0.05)
+                                obj:InputHoldEnd()
+                            end
                         end)
                     end
                 end
             end
         end
         
+        -- ClickDetector
         for _, obj in ipairs(workspace:GetDescendants()) do
             if obj:IsA("ClickDetector") then
                 local parent = obj.Parent
@@ -493,6 +433,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             end
         end
         
+        -- Tool
         for _, obj in ipairs(workspace:GetDescendants()) do
             if obj:IsA("Tool") then
                 local handle = obj:FindFirstChild("Handle")
@@ -506,7 +447,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Character respawn
+-- Respawn
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(1)
     if speedEnabled then ApplySpeed() end
@@ -517,7 +458,6 @@ end)
 -- ===== RE-SERVER =====
 local function HopToLowestServer()
     statusLabel.Text = "🔄 Сервер іздестірілуде..."
-    
     local placeId = game.PlaceId
     local currentJobId = game.JobId
     
@@ -573,6 +513,4 @@ reServerBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ===== ІСКЕ ҚОСУ =====
 print("⚡ PRIME-HUB by ers - Жүктелді!")
-print("🏃 Speed Hack | 🧍 Anti-Ragdoll | 🎯 Instant Grab | 🛡️ Anti-TP | 🔄 Re-Server")
