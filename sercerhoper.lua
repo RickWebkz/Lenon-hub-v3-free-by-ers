@@ -1,5 +1,6 @@
 -- =====================================================
--- PRIME-HUB - Speed Hack + Re-Server (FIXED)
+-- PRIME-HUB - Full Edition
+-- Speed Hack + Re-Server + Instant Grab + Anti-Cheat + Anti-Ragdoll
 -- Delta Executor
 -- by ers
 -- =====================================================
@@ -9,6 +10,7 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ===== АЙНЫМАЛЫ =====
@@ -17,6 +19,7 @@ local speedValue = 50
 local menuOpen = false
 local guiParent = nil
 local speedConnection = nil
+local antiRagdollConnection = nil
 
 -- ===== DELTA ҚАУІПСІЗ GUI PARENT =====
 do
@@ -38,6 +41,130 @@ local NEON_PURPLE = Color3.fromRGB(180, 80, 255)
 local DARK_PURPLE = Color3.fromRGB(25, 10, 45)
 local DARKER_PURPLE = Color3.fromRGB(15, 5, 30)
 
+-- ===== ANTI-CHEAT (ТОҚТАУСЫЗ, МЕНЮСІЗ) =====
+-- WalkSpeed-ты сервер қайтарса да, қайта орнатады
+task.spawn(function()
+    while task.wait(0.05) do
+        if speedEnabled then
+            local char = LocalPlayer.Character
+            if char then
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.WalkSpeed ~= speedValue then
+                    humanoid.WalkSpeed = speedValue
+                end
+            end
+        end
+    end
+end)
+
+-- ===== ANTI-RAGDOLL (ТОҚТАУСЫЗ) =====
+local function EnableAntiRagdoll()
+    if antiRagdollConnection then
+        antiRagdollConnection:Disconnect()
+    end
+    
+    antiRagdollConnection = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            -- Ragdoll күйін өшіру
+            if humanoid.PlatformStand then
+                humanoid.PlatformStand = false
+            end
+            
+            -- HumanoidStateType.Ragdoll болса, қалпына келтіру
+            if humanoid:GetState() == Enum.HumanoidStateType.Ragdoll then
+                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
+            
+            -- FallingDown болса, қалпына келтіру
+            if humanoid:GetState() == Enum.HumanoidStateType.FallingDown then
+                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
+        end
+        
+        -- Ragdoll-ға байланысты басқа элементтерді өшіру
+        for _, obj in ipairs(char:GetDescendants()) do
+            if obj:IsA("BallSocketConstraint") or obj:IsA("HingeConstraint") then
+                -- Ragdoll constraint-терін өшіру
+                if obj.Name:lower():find("ragdoll") or obj.Name:lower():find("joint") then
+                    obj.Enabled = false
+                end
+            end
+        end
+    end)
+end
+
+EnableAntiRagdoll()
+
+-- ===== INSTANT GRAB (E БАТЫРМАСЫ) =====
+-- ProximityPrompt-тарды автоматты түрде іске қосады
+local function EnableInstantGrab()
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        
+        -- E батырмасы
+        if input.KeyCode == Enum.KeyCode.E then
+            local char = LocalPlayer.Character
+            if not char then return end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            -- Барлық ProximityPrompt-тарды іздеу
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("ProximityPrompt") then
+                    local parent = obj.Parent
+                    if parent and parent:IsA("BasePart") then
+                        local distance = (parent.Position - root.Position).Magnitude
+                        -- 50 studs ішіндегі барлық prompt-тарды іске қосу
+                        if distance <= 50 then
+                            pcall(function()
+                                obj:InputHoldBegin()
+                                task.wait(0.05)
+                                obj:InputHoldEnd()
+                            end)
+                        end
+                    end
+                end
+            end
+            
+            -- ClickDetector-лерді де іске қосу
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("ClickDetector") then
+                    local parent = obj.Parent
+                    if parent and parent:IsA("BasePart") then
+                        local distance = (parent.Position - root.Position).Magnitude
+                        if distance <= 50 then
+                            pcall(function()
+                                fireclickdetector(obj)
+                            end)
+                        end
+                    end
+                end
+            end
+            
+            -- Tool-дарды алу (егер жақын жерде болса)
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("Tool") then
+                    local handle = obj:FindFirstChild("Handle")
+                    if handle and handle:IsA("BasePart") then
+                        local distance = (handle.Position - root.Position).Magnitude
+                        if distance <= 50 then
+                            pcall(function()
+                                obj.Parent = char
+                            end)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+EnableInstantGrab()
+
 -- ===== GUI =====
 local sg = Instance.new("ScreenGui")
 sg.Name = "PrimeHub"
@@ -45,7 +172,7 @@ sg.Parent = guiParent
 sg.ResetOnSpawn = false
 sg.IgnoreGuiInset = true
 
--- ===== БАСТЫ FRAME (icon + menu бірге) =====
+-- ===== БАСТЫ FRAME =====
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 280, 0, 42)
 mainFrame.Position = UDim2.new(0.02, 0, 0.15, 0)
@@ -65,6 +192,7 @@ icon.Text = "PRIME-HUB"
 icon.TextColor3 = NEON_PURPLE
 icon.TextScaled = true
 icon.Font = Enum.Font.GothamBold
+icon.AutoButtonColor = false
 icon.Parent = mainFrame
 
 local iconCorner = Instance.new("UICorner")
@@ -246,7 +374,10 @@ local function ToggleMenu()
     end
 end
 
--- ===== SPEED HACK ЛОГИКАСЫ (ШЫН МӘНІНДЕ ЖҰМЫС ІСТЕЙДІ) =====
+-- ===== ICON CLICK =====
+icon.MouseButton1Click:Connect(ToggleMenu)
+
+-- ===== SPEED HACK ЛОГИКАСЫ =====
 local function ApplySpeed()
     if speedConnection then
         speedConnection:Disconnect()
@@ -275,9 +406,6 @@ local function ApplySpeed()
         end
     end)
 end
-
--- ===== ICON CLICK =====
-icon.MouseButton1Click:Connect(ToggleMenu)
 
 -- ===== SPEED TOGGLE =====
 local function ToggleSpeed()
@@ -323,18 +451,10 @@ LocalPlayer.CharacterAdded:Connect(function()
     if speedEnabled then
         ApplySpeed()
     end
+    EnableAntiRagdoll()
 end)
 
--- ===== RE-SERVER ЛОГИКАСЫ (ТҮЗЕТІЛГЕН) =====
-local function GetPlayerCountInServer()
-    -- Ағымдағы сервердегі ойыншылар саны
-    local count = 0
-    for _, plr in ipairs(Players:GetPlayers()) do
-        count = count + 1
-    end
-    return count
-end
-
+-- ===== RE-SERVER ЛОГИКАСЫ =====
 local function HopToLowestServer()
     statusLabel.Text = "🔄 Сервер іздестірілуде..."
     
@@ -367,7 +487,7 @@ local function HopToLowestServer()
     end
     
     local function FindBestServer(cursor, bestServer, lowestCount, depth)
-        if depth > 3 then
+        if depth > 5 then
             return bestServer, lowestCount
         end
         
@@ -379,7 +499,6 @@ local function HopToLowestServer()
         for _, server in ipairs(data.data) do
             if server.id and server.id ~= currentJobId then
                 if server.playing and server.maxPlayers and server.playing < server.maxPlayers then
-                    -- Ең аз ойыншысы бар сервер
                     if server.playing < lowestCount then
                         lowestCount = server.playing
                         bestServer = server
@@ -388,12 +507,10 @@ local function HopToLowestServer()
             end
         end
         
-        -- Егер ең аз ойыншысы 1 болса, тоқта
         if lowestCount <= 1 then
             return bestServer, lowestCount
         end
         
-        -- Келесі бетті жүктеу
         if data.nextPageCursor then
             return FindBestServer(data.nextPageCursor, bestServer, lowestCount, depth + 1)
         end
@@ -431,4 +548,8 @@ reServerBtn.MouseButton1Click:Connect(OnReServer)
 -- ===== ІСКЕ ҚОСУ =====
 print("⚡ PRIME-HUB by ers - Жүктелді!")
 print("💜 Күлгін неон дизайн")
-print("🏃 Speed Hack (1-1500) + 🔄 Re-Server")
+print("🏃 Speed Hack (1-1500)")
+print("🔄 Re-Server")
+print("🎯 Instant Grab (E батырмасы)")
+print("🛡️ Anti-Cheat (тоқтаусыз)")
+print("🧍 Anti-Ragdoll (тоқтаусыз)")
