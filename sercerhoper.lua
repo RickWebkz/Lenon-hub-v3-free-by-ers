@@ -1,558 +1,229 @@
--- =====================================================
--- PRIME-HUB - FULL EDITION (v5 FINAL - FIXED & STABLE)
--- Delta Executor
--- by ers
--- =====================================================
+-- ======================================================
+-- PRIME-HUB | Neon Purple Edition (Delta Compatible)
+-- ======================================================
 
-local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
 
--- ===== АЙНЫМАЛЫЛАР =====
-local speedEnabled = false
-local speedValue = 50
-local menuOpen = false
-local guiParent = nil
-local speedConnection = nil
-local antiRagdollEnabled = false
-local antiRagdollConnection = nil
-local instantGrabEnabled = false
-local antiTpEnabled = false
-local antiTpConnection = nil
-local antiTpAttempts = 0
-local antiTpMaxAttempts = 3
-local antiTpCooldown = false
-local lastPosition = nil
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
--- ===== GUI PARENT =====
-do
-    local ok, result = pcall(function() return gethui() end)
-    if ok and result then 
-        guiParent = result
-    else
-        local ok2, result2 = pcall(function() return game:GetService("CoreGui") end)
-        if ok2 and result2 then 
-            guiParent = result2
-        else 
-            guiParent = LocalPlayer:WaitForChild("PlayerGui") 
-        end
-    end
+-- Бұрын ашылған GUI болса жою
+if CoreGui:FindFirstChild("PrimeHub_Delta") then
+    CoreGui.PrimeHub_Delta:Destroy()
 end
 
-local NEON_PURPLE = Color3.fromRGB(180, 80, 255)
-local DARK_PURPLE = Color3.fromRGB(25, 10, 45)
-local DARKER_PURPLE = Color3.fromRGB(15, 5, 30)
+-- Негізгі ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "PrimeHub_Delta"
+ScreenGui.Parent = CoreGui
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ResetOnSpawn = false
 
--- ===== GUI =====
-local sg = Instance.new("ScreenGui")
-sg.Name = "PrimeHub"
-sg.Parent = guiParent
-sg.ResetOnSpawn = false
-sg.IgnoreGuiInset = true
+-- 1. Қалқымалы иконка (Floating Icon)
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "FloatingIcon"
+ToggleButton.Parent = ScreenGui
+ToggleButton.BackgroundColor3 = Color3.fromRGB(25, 10, 45)
+ToggleButton.Position = UDim2.new(0.08, 0, 0.15, 0)
+ToggleButton.Size = UDim2.new(0, 50, 0, 50)
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.Text = "PH"
+ToggleButton.TextColor3 = Color3.fromRGB(210, 120, 255)
+ToggleButton.TextSize = 18
+ToggleButton.Draggable = true
+ToggleButton.Active = true
 
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 280, 0, 42)
-mainFrame.Position = UDim2.new(0.02, 0, 0.15, 0)
-mainFrame.BackgroundTransparency = 1
-mainFrame.Active = true
-mainFrame.Draggable = true
-mainFrame.Parent = sg
+local UICornerBtn = Instance.new("UICorner")
+UICornerBtn.CornerRadius = UDim.new(0, 12)
+UICornerBtn.Parent = ToggleButton
 
-local icon = Instance.new("TextButton")
-icon.Size = UDim2.new(0, 130, 0, 42)
-icon.BackgroundColor3 = DARK_PURPLE
-icon.BackgroundTransparency = 0.1
-icon.BorderSizePixel = 0
-icon.Text = "PRIME-HUB"
-icon.TextColor3 = NEON_PURPLE
-icon.TextScaled = true
-icon.Font = Enum.Font.GothamBold
-icon.AutoButtonColor = false
-icon.Parent = mainFrame
+local UIStrokeBtn = Instance.new("UIStroke")
+UIStrokeBtn.Color = Color3.fromRGB(160, 32, 240)
+UIStrokeBtn.Thickness = 2.5
+UIStrokeBtn.Parent = ToggleButton
 
-local iconCorner = Instance.new("UICorner")
-iconCorner.CornerRadius = UDim.new(0, 10)
-iconCorner.Parent = icon
+-- 2. Негізгі Меню (Main Frame)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 6, 28)
+MainFrame.Position = UDim2.new(0.08, 0, 0.15, 60)
+MainFrame.Size = UDim2.new(0, 260, 0, 0) -- Төмен созылу үшін бастапқы биіктік 0
+MainFrame.ClipsDescendants = true
 
-local iconStroke = Instance.new("UIStroke")
-iconStroke.Color = NEON_PURPLE
-iconStroke.Thickness = 2
-iconStroke.Transparency = 0.2
-iconStroke.Parent = icon
+local UICornerMain = Instance.new("UICorner")
+UICornerMain.CornerRadius = UDim.new(0, 14)
+UICornerMain.Parent = MainFrame
 
-local menu = Instance.new("Frame")
-menu.Size = UDim2.new(0, 280, 0, 0)
-menu.Position = UDim2.new(0, 0, 0, 48)
-menu.BackgroundColor3 = DARKER_PURPLE
-menu.BackgroundTransparency = 0.05
-menu.BorderSizePixel = 0
-menu.ClipsDescendants = true
-menu.Visible = false
-menu.Parent = mainFrame
+local UIStrokeMain = Instance.new("UIStroke")
+UIStrokeMain.Color = Color3.fromRGB(140, 0, 255)
+UIStrokeMain.Thickness = 2.5
+UIStrokeMain.Parent = MainFrame
 
-local menuCorner = Instance.new("UICorner")
-menuCorner.CornerRadius = UDim.new(0, 14)
-menuCorner.Parent = menu
+-- Тақырыбы
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 0, 0, 10)
+Title.Size = UDim2.new(1, 0, 0, 25)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "PRIME - HUB"
+Title.TextColor3 = Color3.fromRGB(230, 150, 255)
+Title.TextSize = 18
 
-local menuStroke = Instance.new("UIStroke")
-menuStroke.Color = NEON_PURPLE
-menuStroke.Thickness = 2
-menuStroke.Transparency = 0.1
-menuStroke.Parent = menu
+-- Контейнер
+local Container = Instance.new("ScrollingFrame")
+Container.Parent = MainFrame
+Container.BackgroundTransparency = 1
+Container.Position = UDim2.new(0, 10, 0, 40)
+Container.Size = UDim2.new(1, -20, 1, -50)
+Container.CanvasSize = UDim2.new(0, 0, 0, 240)
+Container.ScrollBarThickness = 3
+Container.ScrollBarImageColor3 = Color3.fromRGB(160, 32, 240)
 
-local header = Instance.new("TextLabel")
-header.Size = UDim2.new(1, 0, 0, 40)
-header.BackgroundColor3 = DARK_PURPLE
-header.BackgroundTransparency = 0.3
-header.Text = "⚡ PRIME-HUB"
-header.TextColor3 = NEON_PURPLE
-header.TextScaled = true
-header.Font = Enum.Font.GothamBold
-header.Parent = menu
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = Container
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 10)
 
-local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 14)
-headerCorner.Parent = header
+-- Менюді созып ашу / жабу анимациясы
+local menuOpen = false
+ToggleButton.MouseButton1Click:Connect(function()
+    menuOpen = not menuOpen
+    local targetSize = menuOpen and UDim2.new(0, 260, 0, 250) or UDim2.new(0, 260, 0, 0)
+    local tweenInfo = TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    TweenService:Create(MainFrame, tweenInfo, {Size = targetSize}):Play()
+end)
 
-local function CreateSwitch(text, yPos, callback)
-    local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, -20, 0, 35)
-    row.Position = UDim2.new(0, 10, 0, yPos)
-    row.BackgroundTransparency = 1
-    row.Parent = menu
+-- ======================================================
+-- ВАРУИРОВКА ЛОГИКАСЫ ЖӘНЕ ФУНКЦИЯЛАР
+-- ======================================================
 
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0.65, 0, 1, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text
-    lbl.TextColor3 = Color3.fromRGB(200, 180, 255)
-    lbl.TextSize = 14
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Font = Enum.Font.Gotham
-    lbl.Parent = row
+local currentSpeed = 16
+local speedHackActive = false
+local antiRagdollActive = false
+local instantGrabActive = false
 
+-- 1. SPEED HACK ЭЛЕМЕНТІ
+local speedFrame = Instance.new("Frame")
+speedFrame.Parent = Container
+speedFrame.BackgroundColor3 = Color3.fromRGB(30, 12, 55)
+speedFrame.Size = UDim2.new(1, 0, 0, 55)
+
+local speedCorner = Instance.new("UICorner")
+speedCorner.CornerRadius = UDim.new(0, 8)
+speedCorner.Parent = speedFrame
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Parent = speedFrame
+speedLabel.BackgroundTransparency = 1
+speedLabel.Position = UDim2.new(0, 10, 0, 5)
+speedLabel.Size = UDim2.new(1, -20, 0, 20)
+speedLabel.Font = Enum.Font.GothamBold
+speedLabel.Text = "SPEED HACK (16 - 300)"
+speedLabel.TextColor3 = Color3.fromRGB(200, 130, 255)
+speedLabel.TextSize = 12
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local speedBox = Instance.new("TextBox")
+speedBox.Parent = speedFrame
+speedBox.BackgroundColor3 = Color3.fromRGB(18, 6, 32)
+speedBox.Position = UDim2.new(0, 10, 0, 28)
+speedBox.Size = UDim2.new(1, -20, 0, 20)
+speedBox.Font = Enum.Font.Gotham
+speedBox.PlaceholderText = "Жылдамдық енгіз (16-300)..."
+speedBox.Text = ""
+speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedBox.TextSize = 12
+
+local boxCorner = Instance.new("UICorner")
+boxCorner.CornerRadius = UDim.new(0, 6)
+boxCorner.Parent = speedBox
+
+speedBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local val = tonumber(speedBox.Text)
+        if val then
+            if val < 16 then val = 16 end
+            if val > 300 then val = 300 end
+            currentSpeed = val
+            speedHackActive = true
+            speedBox.Text = "Орнатылды: " .. tostring(currentSpeed)
+        else
+            speedHackActive = false
+            speedBox.Text = ""
+        end
+    end
+end)
+
+-- Loop: Жылдамдықты үнемі бақылау (Delta анти-ресет)
+RunService.Stepped:Connect(function()
+    if speedHackActive and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = currentSpeed
+    end
+end)
+
+-- 2. TOGGLE ЖАСАУ КӨМЕКШІСІ
+local function createToggle(name, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 55, 1, -6)
-    btn.Position = UDim2.new(0.7, 0, 0, 3)
-    btn.BackgroundColor3 = Color3.fromRGB(35, 20, 55)
-    btn.BackgroundTransparency = 0.2
-    btn.Text = "OFF"
-    btn.TextColor3 = Color3.fromRGB(255, 100, 150)
-    btn.TextSize = 13
+    btn.Parent = Container
+    btn.BackgroundColor3 = Color3.fromRGB(30, 12, 55)
+    btn.Size = UDim2.new(1, 0, 0, 40)
     btn.Font = Enum.Font.GothamBold
-    btn.BorderSizePixel = 0
-    btn.AutoButtonColor = false
-    btn.Parent = row
+    btn.Text = "  " .. name .. " [OFF]"
+    btn.TextColor3 = Color3.fromRGB(180, 180, 200)
+    btn.TextSize = 12
+    btn.TextXAlignment = Enum.TextXAlignment.Left
 
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 8)
-    btnCorner.Parent = btn
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
 
     local state = false
     btn.MouseButton1Click:Connect(function()
         state = not state
-        btn.Text = state and "ON" or "OFF"
-        btn.TextColor3 = state and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 100, 150)
-        btn.BackgroundColor3 = state and Color3.fromRGB(20, 80, 50) or Color3.fromRGB(35, 20, 55)
+        if state then
+            btn.Text = "  " .. name .. " [ON]"
+            btn.TextColor3 = Color3.fromRGB(220, 120, 255)
+            btn.BackgroundColor3 = Color3.fromRGB(60, 20, 100)
+        else
+            btn.Text = "  " .. name .. " [OFF]"
+            btn.TextColor3 = Color3.fromRGB(180, 180, 200)
+            btn.BackgroundColor3 = Color3.fromRGB(30, 12, 55)
+        end
         callback(state)
     end)
-    return btn
 end
 
-local speedBtn = CreateSwitch("🏃 SPEED HACK", 50, function(state)
-    speedEnabled = state
-    ApplySpeed()
-end)
-
-local antiRagdollBtn = CreateSwitch("🧍 ANTI RAGDOLL", 85, function(state)
-    antiRagdollEnabled = state
-    if state then EnableAntiRagdoll() else DisableAntiRagdoll() end
-end)
-
-local instantGrabBtn = CreateSwitch("🎯 INSTANT GRAB", 120, function(state)
-    instantGrabEnabled = state
-end)
-
-local antiTpBtn = CreateSwitch("🛡️ ANTI TP", 155, function(state)
-    antiTpEnabled = state
-    antiTpAttempts = 0
-    if state then EnableAntiTp() else DisableAntiTp() end
-end)
-
--- SPEED INPUT
-local speedInputRow = Instance.new("Frame")
-speedInputRow.Size = UDim2.new(1, -20, 0, 35)
-speedInputRow.Position = UDim2.new(0, 10, 0, 190)
-speedInputRow.BackgroundTransparency = 1
-speedInputRow.Parent = menu
-
-local speedInputLabel = Instance.new("TextLabel")
-speedInputLabel.Size = UDim2.new(0.5, 0, 1, 0)
-speedInputLabel.BackgroundTransparency = 1
-speedInputLabel.Text = "⚡ SPEED:"
-speedInputLabel.TextColor3 = Color3.fromRGB(200, 180, 255)
-speedInputLabel.TextSize = 14
-speedInputLabel.TextXAlignment = Enum.TextXAlignment.Left
-speedInputLabel.Font = Enum.Font.Gotham
-speedInputLabel.Parent = speedInputRow
-
-local speedInput = Instance.new("TextBox")
-speedInput.Size = UDim2.new(0.4, 0, 0, 26)
-speedInput.Position = UDim2.new(0.5, 0, 0, 4)
-speedInput.BackgroundColor3 = Color3.fromRGB(35, 20, 55)
-speedInput.BackgroundTransparency = 0.2
-speedInput.TextColor3 = NEON_PURPLE
-speedInput.TextSize = 14
-speedInput.Font = Enum.Font.GothamBold
-speedInput.Text = "50"
-speedInput.PlaceholderText = "1-300"
-speedInput.BorderSizePixel = 0
-speedInput.ClearTextOnFocus = false
-speedInput.Parent = speedInputRow
-
-local speedInputCorner = Instance.new("UICorner")
-speedInputCorner.CornerRadius = UDim.new(0, 8)
-speedInputCorner.Parent = speedInput
-
--- RE-SERVER
-local reServerBtn = Instance.new("TextButton")
-reServerBtn.Size = UDim2.new(1, -20, 0, 40)
-reServerBtn.Position = UDim2.new(0, 10, 0, 235)
-reServerBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 140)
-reServerBtn.BackgroundTransparency = 0.15
-reServerBtn.Text = "🔄 RE-SERVER"
-reServerBtn.TextColor3 = Color3.fromRGB(220, 180, 255)
-reServerBtn.TextSize = 15
-reServerBtn.Font = Enum.Font.GothamBold
-reServerBtn.BorderSizePixel = 0
-reServerBtn.AutoButtonColor = false
-reServerBtn.Parent = menu
-
-local reServerCorner = Instance.new("UICorner")
-reServerCorner.CornerRadius = UDim.new(0, 10)
-reServerCorner.Parent = reServerBtn
-
-local reServerStroke = Instance.new("UIStroke")
-reServerStroke.Color = NEON_PURPLE
-reServerStroke.Thickness = 1.5
-reServerStroke.Transparency = 0.3
-reServerStroke.Parent = reServerBtn
-
--- STATUS
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -20, 0, 25)
-statusLabel.Position = UDim2.new(0, 10, 0, 280)
-statusLabel.BackgroundTransparency = 1
-statusLabel.Text = "⚡ Дайын"
-statusLabel.TextColor3 = Color3.fromRGB(150, 120, 200)
-statusLabel.TextSize = 12
-statusLabel.Font = Enum.Font.Gotham
-statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-statusLabel.Parent = menu
-
--- MENU ANIMATION
-local function ToggleMenu()
-    menuOpen = not menuOpen
-    menu.Visible = true
-    local targetSize = menuOpen and UDim2.new(0, 280, 0, 315) or UDim2.new(0, 280, 0, 0)
-    local tween = TweenService:Create(menu, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Size = targetSize})
-    tween:Play()
-    if not menuOpen then
-        tween.Completed:Connect(function()
-            if not menuOpen then menu.Visible = false end
-        end)
-    end
-end
-
-icon.MouseButton1Click:Connect(ToggleMenu)
-
--- =====================================================
--- SPEED HACK (TҮЗЕТІЛГЕН - ANTI-RUBBERBANDING ӘДІСІ)
--- =====================================================
-function ApplySpeed()
-    if speedConnection then 
-        speedConnection:Disconnect() 
-        speedConnection = nil 
-    end
-    
-    if not speedEnabled then
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then hum.WalkSpeed = 16 end
-        end
-        return
-    end
-    
-    -- Сервердің тексеруінен өту үшін MoveDirection мен CFrame біріктіріп жылжытамыз
-    speedConnection = RunService.RenderStepped:Connect(function(dt)
-        if not speedEnabled then return end
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        local root = char:FindFirstChild("HumanoidRootPart")
-        
-        if hum and root then
-            -- WalkSpeed-ті қалыпты деңгейде ұстап,серверге сездірмейміз
-            hum.WalkSpeed = 16 
-            
-            local moveDir = hum.MoveDirection
-            if moveDir.Magnitude > 0 then
-                -- Жылдамдықты қауіпсіз әрі артқа қайтармайтындай етіп қосу
-                local currentSpeed = math.clamp(speedValue, 1, 300)
-                root.CFrame = root.CFrame + (moveDir * (currentSpeed * dt))
-            end
-        end
-    end)
-end
-
-speedInput.FocusLost:Connect(function()
-    local ok, val = pcall(function() return tonumber(speedInput.Text) end)
-    if ok and val then
-        speedValue = math.clamp(val, 1, 300)
-        speedInput.Text = tostring(speedValue)
-        if speedEnabled then ApplySpeed() end
-    else
-        speedInput.Text = tostring(speedValue)
-    end
-end)
-
--- =====================================================
 -- ANTI RAGDOLL
--- =====================================================
-function EnableAntiRagdoll()
-    if antiRagdollConnection then 
-        task.cancel(antiRagdollConnection)
-        antiRagdollConnection = nil 
-    end
-    
-    antiRagdollConnection = task.spawn(function()
-        while antiRagdollEnabled do
-            task.wait(0.3)
-            local char = LocalPlayer.Character
-            if char then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then
-                    pcall(function()
-                        hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-                        hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-                        hum:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
-                        if hum.PlatformStand then hum.PlatformStand = false end
-                        if hum.Sit then hum.Sit = false end
-                    end)
-                end
-                for _, v in ipairs(char:GetDescendants()) do
-                    if v:IsA("BallSocketConstraint") or v:IsA("HingeConstraint") then
-                        pcall(function() v:Destroy() end)
-                    end
-                end
-            end
-        end
-    end)
-end
+createToggle("ANTI RAGDOLL", function(state)
+    antiRagdollActive = state
+end)
 
-function DisableAntiRagdoll()
-    if antiRagdollConnection then
-        task.cancel(antiRagdollConnection)
-        antiRagdollConnection = nil
-    end
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
+RunService.Heartbeat:Connect(function()
+    if antiRagdollActive and LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if hum then
-            pcall(function()
-                hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-                hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-            end)
-        end
-    end
-end
-
--- =====================================================
--- ANTI TP
--- =====================================================
-function EnableAntiTp()
-    if antiTpConnection then antiTpConnection:Disconnect() end
-    
-    antiTpAttempts = 0
-    antiTpCooldown = false
-    local char = LocalPlayer.Character
-    if char then
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if root then lastPosition = root.CFrame end
-    end
-    
-    antiTpConnection = RunService.Heartbeat:Connect(function()
-        if not antiTpEnabled or antiTpCooldown then return end
-        if antiTpAttempts >= antiTpMaxAttempts then
-            if antiTpConnection then antiTpConnection:Disconnect() antiTpConnection = nil end
-            statusLabel.Text = "🛡️ ANTI TP: тоқтатылды"
-            return
-        end
-        
-        local c = LocalPlayer.Character
-        if not c then return end
-        local root = c:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        
-        if lastPosition then
-            local distance = (root.Position - lastPosition.Position).Magnitude
-            if distance > 15 then -- Шекті арақашықтық түзетілді
-                antiTpCooldown = true
-                
-                local ap = Instance.new("AlignPosition")
-                ap.Mode = Enum.PositionAlignmentMode.OneAttachment
-                local att = root:FindFirstChild("RootAttachment")
-                if not att then
-                    att = Instance.new("Attachment")
-                    att.Parent = root
-                end
-                ap.Attachment0 = att
-                ap.Position = lastPosition.Position
-                ap.MaxForce = math.huge
-                ap.Responsiveness = 200
-                ap.Parent = root
-                
-                task.wait(0.2)
-                pcall(function() ap:Destroy() end)
-                antiTpCooldown = false
-                
-                antiTpAttempts = antiTpAttempts + 1
-                statusLabel.Text = "🛡️ ANTI TP: " .. antiTpAttempts .. "/3"
-                
-                if antiTpAttempts >= antiTpMaxAttempts then
-                    if antiTpConnection then antiTpConnection:Disconnect() antiTpConnection = nil end
-                    statusLabel.Text = "🛡️ ANTI TP: тоқтатылды"
-                end
-            else
-                lastPosition = root.CFrame
+            -- Ragdoll күйлерін болдырмау
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            if hum:GetState() == Enum.HumanoidStateType.Ragdoll or hum:GetState() == Enum.HumanoidStateType.FallingDown then
+                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
             end
         end
-    end)
-end
+    end
+end)
 
-function DisableAntiTp()
-    if antiTpConnection then antiTpConnection:Disconnect() antiTpConnection = nil end
-    lastPosition = nil
-    antiTpAttempts = 0
-    antiTpCooldown = false
-end
-
--- =====================================================
 -- INSTANT GRAB
--- =====================================================
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed or not instantGrabEnabled then return end
-    
-    if input.KeyCode == Enum.KeyCode.E then
-        local char = LocalPlayer.Character
-        if not char then return end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") then
-                local parent = obj.Parent
-                if parent and parent:IsA("BasePart") then
-                    if (parent.Position - root.Position).Magnitude <= 50 then
-                        pcall(function()
-                            if fireproximityprompt then
-                                fireproximityprompt(obj)
-                            else
-                                obj:InputHoldBegin()
-                                task.wait(0.05)
-                                obj:InputHoldEnd()
-                            end
-                        end)
-                    end
-                end
-            elseif obj:IsA("ClickDetector") then
-                local parent = obj.Parent
-                if parent and parent:IsA("BasePart") then
-                    if (parent.Position - root.Position).Magnitude <= 50 then
-                        pcall(function() fireclickdetector(obj) end)
-                    end
-                end
-            end
-        end
-    end
+createToggle("INSTANT GRAB", function(state)
+    instantGrabActive = state
 end)
 
--- =====================================================
--- RESPAWN
--- =====================================================
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(1)
-    if speedEnabled then ApplySpeed() end
-    if antiRagdollEnabled then EnableAntiRagdoll() end
-    if antiTpEnabled then EnableAntiTp() end
-end)
-
--- =====================================================
--- RE-SERVER
--- =====================================================
-local function HopToLowestServer()
-    statusLabel.Text = "🔄 Сервер іздестірілуде..."
-    local placeId = game.PlaceId
-    local currentJobId = game.JobId
-    
-    local function FetchServers(cursor)
-        local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
-        if cursor then url = url .. "&cursor=" .. cursor end
-        local ok, response = pcall(function() return game:HttpGet(url) end)
-        if not ok or not response then return nil end
-        local decodeOk, decoded = pcall(function() return HttpService:JSONDecode(response) end)
-        if not decodeOk or not decoded then return nil end
-        return decoded
-    end
-    
-    local function FindBestServer(cursor, bestServer, lowestCount, depth)
-        if depth > 5 then return bestServer, lowestCount end
-        local data = FetchServers(cursor)
-        if not data or not data.data then return bestServer, lowestCount end
-        for _, server in ipairs(data.data) do
-            if server.id and server.id ~= currentJobId then
-                if server.playing and server.maxPlayers and server.playing < server.maxPlayers then
-                    if server.playing < lowestCount then
-                        lowestCount = server.playing
-                        bestServer = server
-                    end
-                end
-            end
-        end
-        if lowestCount <= 1 then return bestServer, lowestCount end
-        if data.nextPageCursor then
-            return FindBestServer(data.nextPageCursor, bestServer, lowestCount, depth + 1)
-        end
-        return bestServer, lowestCount
-    end
-    
-    local bestServer, lowestCount = FindBestServer(nil, nil, math.huge, 0)
-    
-    if bestServer then
-        statusLabel.Text = "🔄 Телепорт: " .. lowestCount .. " ойыншы"
-        task.wait(0.3)
-        pcall(function()
-            TeleportService:TeleportToPlaceInstance(placeId, bestServer.id, LocalPlayer)
-        end)
-    else
-        statusLabel.Text = "❌ Бос сервер табылмады"
-        reServerBtn.Text = "🔄 RE-SERVER"
-    end
-end
-
-reServerBtn.MouseButton1Click:Connect(function()
-    if reServerBtn.Text == "🔄 RE-SERVER" then
-        reServerBtn.Text = "⏳ ІЗДЕУДЕ..."
-        task.spawn(HopToLowestServer)
+-- ProximityPrompt (Заттарды/зат ұстауды бірден ашу)
+game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function(prompt)
+    if instantGrabActive then
+        fireproximityprompt(prompt)
     end
 end)
-
--- =====================================================
--- ІСКЕ ҚОСУ
--- =====================================================
-print("⚡ PRIME-HUB by ers (v5 Fixed) - Сәтті жүктелді!")
